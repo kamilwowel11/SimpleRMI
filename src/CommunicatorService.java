@@ -15,59 +15,59 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 
-public class CommunicatorService implements CommunicatorServiceInterfejs, Serializable {
+public class CommunicatorService implements CommunicatorServiceInterface, Serializable {
 
-    Map<String, BlockingQueue<String>> mapUzytkownicy = new HashMap();
-    Map<String, String> mapHasla = new HashMap();
-   
+    Map<String, BlockingQueue<String>> mapUsers = new HashMap();
+    Map<String, String> mapPassword = new HashMap();
+
 
     public CommunicatorService() {
-        this.mapUzytkownicy = Collections.synchronizedMap(this.mapUzytkownicy); // by zapewnić bezpiecznowątkowość
-        this.mapHasla = Collections.synchronizedMap(this.mapHasla);
+        this.mapUsers = Collections.synchronizedMap(this.mapUsers);
+        this.mapPassword = Collections.synchronizedMap(this.mapPassword);
     }
 
-    protected boolean sprawdzanieHasla(String userName, String pass) {
-        boolean sprawdz = false;
+    protected boolean checkPassword(String userName, String pass) {
+        boolean check = false;
         if (pass != null) {
-            String hash = (String)this.mapHasla.get(userName);
-            if (hash.equals(this.hasloDoHash(pass))) {          // hash.equals a nie '==' bo porównujemy wartości
-                sprawdz = true;
+            String hash = (String)this.mapPassword.get(userName);
+            if (hash.equals(this.passwordToHash(pass))) {
+                check = true;
             }
         }
-        return sprawdz;
+        return check;
     }
 
     public List<String> getUsers() throws RemoteException {
-		List<String> uzytkownicy = new ArrayList(this.mapUzytkownicy.keySet());
-        return uzytkownicy;
+        List<String> users = new ArrayList(this.mapUsers.keySet());
+        return users;
     }
 
 
-    protected String hasloDoHash(String haslo) {        //protected potrzebujemy by nikt nie miał dostępu i nie mógł nadpisać hashCode
-        return "" + haslo.hashCode();
+    protected String passwordToHash(String password) {        //protected potrzebujemy by nikt nie miał dostępu i nie mógł nadpisać hashCode
+        return "" + password.hashCode();
     }
 
-    public void registerUser(String nickname, String haslo) throws RemoteException {
-        this.mapHasla.computeIfAbsent(nickname, (k) -> {
-            this.mapUzytkownicy.put(nickname, new LinkedBlockingQueue());
-            return this.hasloDoHash(haslo);
+    public void registerUser(String nickname, String password) throws RemoteException {
+        this.mapPassword.computeIfAbsent(nickname, (k) -> {
+            this.mapUsers.put(nickname, new LinkedBlockingQueue());
+            return this.passwordToHash(password);
         });
     }
 
-    public void addMessage(String odKogo, String haslo, String doKogo, String wiadomosc) throws RemoteException {
-        if (this.sprawdzanieHasla(odKogo, haslo)) {
-            Queue<String> q = this.mapUzytkownicy.get(doKogo);
+    public void addMessage(String messageFrom, String password, String messageTo, String message) throws RemoteException {
+        if (this.checkPassword(messageFrom, password)) {
+            Queue<String> q = this.mapUsers.get(messageTo);
             if (q != null) {
-                q.add(odKogo + ";" + wiadomosc);
+                q.add(messageFrom + ";" + message);
             }
         }
 
     }
 
-    public String getMessage(String nickname, String haslo) throws RemoteException {
+    public String getMessage(String nickname, String password) throws RemoteException {
         try {
-            if (this.sprawdzanieHasla(nickname, haslo)) {
-                BlockingQueue<String> q = (BlockingQueue)this.mapUzytkownicy.get(nickname);
+            if (this.checkPassword(nickname, password)) {
+                BlockingQueue<String> q = (BlockingQueue)this.mapUsers.get(nickname);
                 if (q != null) {
                     return (String)q.poll(2L, TimeUnit.SECONDS);            // decydowanie o sprawdzaniu czy jest nowa wiadomosć w ciągu 2 sekund
                 }                                                                   // Jak nic nie ma to if się nie wykona i zwracany jest null

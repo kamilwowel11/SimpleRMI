@@ -16,25 +16,25 @@ import java.util.Scanner;
 public class Client implements Serializable{
 
     String nickname;
-    String haslo;
-    CommunicatorServiceInterfejs service;
+    String password;
+    CommunicatorServiceInterface service;
 
 
 
 
-    public Client(String nickname, String haslo)
+    public Client(String nickname, String password)
     {
         this.nickname=nickname;
-        this.haslo=haslo;
+        this.password=password;
 
         try
         {
-            String nazwaServera = "komunikator";
+            String serverName = "communicator";
             // Registry rejestr = null;
-            Registry rejestr = LocateRegistry.getRegistry(4444);
-            service = (CommunicatorServiceInterfejs) rejestr.lookup(nazwaServera);
+            Registry registry = LocateRegistry.getRegistry(4444);
+            service = (CommunicatorServiceInterface) registry.lookup(serverName);
 
-            System.out.println("Klient: " + nickname + " Podłączony");
+            System.out.println("Client: " + nickname + " connected");
 
         } catch (RemoteException | NotBoundException e)
         {
@@ -50,29 +50,25 @@ public class Client implements Serializable{
         try
         {
 
-            service.registerUser(nickname,haslo);
-            // Watek watek = new Watek(nickname,haslo);  // Wątek w końcu nie używany bo chyba łatwiej było z wyrażeniem lambda w klasie głównej
-            // watek.start();                            // jednak chciałem zostawić go tutaj.
+            service.registerUser(nickname, password);
             Thread reader = new Thread(() -> {
                 try
                 {
                     while(!Thread.interrupted())
                     {
-                        String msg = service.getMessage(nickname, haslo);
+                        String msg = service.getMessage(nickname, password);
                         if (msg != null)
                         {
                             String [] temp = msg.split(";");
                             if (temp.length == 2)
                             {
-                                String doKogo = temp[0];
-                                String wiadomosc = temp[1];
-                                System.out.println(doKogo + ";" + wiadomosc);
-                                // System.out.println("msg: " + msg);
-                                // System.out.println("tmp: " + temp);
+                                String messageTo = temp[0];
+                                String message = temp[1];
+                                System.out.println(messageTo + ";" + message);
                             }
                             else
                             {
-                                System.out.println("Zły format wiadomości");
+                                System.out.println("Wrong input");
                             }
                         }
                     }
@@ -89,13 +85,12 @@ public class Client implements Serializable{
                     while(!Thread.interrupted())
                     {
                         Scanner scan = new Scanner(System.in);
-                        System.out.println("Dawej te wiadomosc?");
-                        String msgUsera = scan.nextLine();
-                        String [] temp = msgUsera.split(";");
-                        String doKogo = temp[0];
-                        String wiadomosc = temp[1];
-                        service.addMessage(nickname, haslo, doKogo, wiadomosc);
-                        //System.out.println("Wiadomość nadana do - " + doKogo + " z wiadomością -  " + wiadomosc);
+                        System.out.println("Type your message !");
+                        String messageUser = scan.nextLine();
+                        String [] temp = messageUser.split(";");
+                        String messageTo = temp[0];
+                        String message = temp[1];
+                        service.addMessage(nickname, password, messageTo, message);
                     }
                 } catch (RemoteException e)
                 {
